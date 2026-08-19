@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>協小 QR 生成器｜中華基督教會協和小學</title>
+<style>
+  :root{
+    --hw-red:#C8102E; --hw-red-dark:#8C0F1E; --ink:#2B2B2B; --paper:#FAF7F2;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:"Microsoft JhengHei","PingFang HK","Noto Sans TC",sans-serif;
+    background:linear-gradient(160deg,#fff 0%, #FDF1F1 60%, #FBE4E6 100%);
+    color:var(--ink); min-height:100vh;
+  }
+  header{
+    background:linear-gradient(90deg,var(--hw-red) 0%, #E01836 100%);
+    color:#fff; padding:18px 24px; display:flex; align-items:center; gap:16px;
+    box-shadow:0 2px 12px rgba(200,16,46,.25);
+  }
+  header img{height:52px; width:auto; background:#fff; border-radius:6px; padding:3px;}
+  header .titles h1{font-size:22px; letter-spacing:1px;}
+  header .titles p{font-size:12px; opacity:.9; margin-top:2px;}
+  .wrap{max-width:1080px; margin:0 auto; padding:28px 16px 40px; display:grid; grid-template-columns:1fr 1fr; gap:28px;}
+  @media(max-width:860px){ .wrap{grid-template-columns:1fr;} }
+  .panel{
+    background:#fff; border-radius:14px; padding:22px; box-shadow:0 4px 18px rgba(0,0,0,.07);
+    border:1px solid #F0DDDD;
+  }
+  .panel h2{font-size:15px; color:var(--hw-red); margin-bottom:14px; display:flex; align-items:center; gap:6px;}
+  label{font-size:13px; color:#555; display:block; margin:12px 0 5px; font-weight:600;}
+  input[type=text]{width:100%; padding:10px 12px; border:1.5px solid #E3D0D2; border-radius:8px; font-size:14px;}
+  input[type=text]:focus{outline:none; border-color:var(--hw-red);}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  .seg{display:inline-flex; border:1.5px solid #E3D0D2; border-radius:9px; overflow:hidden;}
+  .seg button{
+    border:none; background:#fff; padding:8px 14px; font-size:13px; cursor:pointer; color:#444;
+  }
+  .seg button.on{background:var(--hw-red); color:#fff;}
+  .colors{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .swatch{width:30px; height:30px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1.5px #ddd; cursor:pointer;}
+  .swatch.on{box-shadow:0 0 0 2.5px var(--hw-red);}
+  input[type=color]{width:34px; height:34px; border:none; padding:0; cursor:pointer; border-radius:6px; background:none;}
+  .chk{display:flex; align-items:center; gap:7px; font-size:13px; color:#444; margin-top:10px; cursor:pointer;}
+  .chk input{width:16px; height:16px; accent-color:var(--hw-red);}
+  .upload{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:6px;}
+  .upload .filebtn{
+    background:#fff; border:1.5px dashed #D9A8AE; color:var(--hw-red); padding:8px 14px; border-radius:8px;
+    font-size:13px; cursor:pointer;
+  }
+  .upload .filebtn:hover{background:#FFF5F5;}
+  .upload span{font-size:12px; color:#999;}
+  .preview{
+    background:#fff; border-radius:14px; padding:22px; box-shadow:0 4px 18px rgba(0,0,0,.07);
+    border:1px solid #F0DDDD; display:flex; flex-direction:column; align-items:center;
+  }
+  .stage{
+    background:repeating-conic-gradient(#F2F2F2 0 25%, #fff 0 50%) 0 0/20px 20px;
+    border-radius:10px; padding:18px; width:100%; display:flex; justify-content:center;
+  }
+  #qrCanvas{max-width:100%; height:auto; border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,.12); background:#fff;}
+  .btns{display:flex; gap:12px; margin-top:18px; width:100%;}
+  .btn{
+    flex:1; text-align:center; padding:12px; border:none; border-radius:9px; font-size:15px; font-weight:700;
+    cursor:pointer; color:#fff; background:var(--hw-red); letter-spacing:1px;
+  }
+  .btn.ghost{background:#fff; color:var(--hw-red); border:1.5px solid var(--hw-red);}
+  .btn:hover{filter:brightness(1.08);}
+  .hint{font-size:12px; color:#999; margin-top:14px; text-align:center; line-height:1.6;}
+  footer{text-align:center; font-size:12px; color:#B08A8E; padding:16px;}
+  .note{background:#FFF8E6; border:1px solid #F0DFAE; border-radius:8px; padding:9px 12px; font-size:12px; color:#8A6D1A; margin-top:12px; line-height:1.6;}
+</style>
+</head>
+<body>
+
+<header>
+  <img id="headLogo" src="logo-banner.png" alt="協和小學校徽">
+  <div class="titles">
+    <h1>協小 QR 生成器</h1>
+    <p>中華基督教會協和小學 · 數字教育發展及創新科技組 · 校內工具</p>
+  </div>
+</header>
+
+<!-- QR 中央用嘅油燈icon（隱藏，唔會顯示喺頁面） -->
+<img id="centerLogo" src="logo-lamp.png" style="display:none;">
+
+<div class="wrap">
+
+  <!-- 左：設定 -->
+  <div class="panel">
+    <h2>① 內容</h2>
+    <label>連結／文字（網址會自動補上 https://）</label>
+    <input type="text" id="txtUrl" placeholder="例如：https://www.heepwoh.edu.hk 或活動報名連結" value="https://www.heepwoh.edu.hk">
+
+    <h2 style="margin-top:22px;">② 樣式</h2>
+    <label>模組款式</label>
+    <div class="row">
+      <div class="seg" id="segStyle">
+        <button data-v="square" class="on">方形</button>
+        <button data-v="dot">圓點</button>
+        <button data-v="round">圓角</button>
+      </div>
+    </div>
+
+    <label>主色（校色：紅白）</label>
+    <div class="colors" id="colorBox">
+      <div class="swatch on" data-c="#C8102E" title="協和紅"></div>
+      <div class="swatch" data-c="#8C0F1E" title="深紅"></div>
+      <div class="swatch" data-c="#1A1A1A" title="黑"></div>
+      <div class="swatch" data-c="#003399" title="藍"></div>
+      <div class="swatch" data-c="#1E7A3C" title="綠"></div>
+      <input type="color" id="customColor" value="#C8102E" title="自訂顏色">
+    </div>
+
+    <label class="chk"><input type="checkbox" id="chkGradient"> 漸變效果（由主色漸到淺色）</label>
+    <label class="chk"><input type="checkbox" id="chkTransparent"> 透明背景（PNG 適用）</label>
+    <label class="chk"><input type="checkbox" id="chkCaption" checked> 下方加學校名稱</label>
+
+    <h2 style="margin-top:22px;">③ 標誌（Logo）</h2>
+    <div class="upload">
+      <label class="filebtn">📁 上傳自訂圖片（建議透明背景 PNG）
+        <input type="file" id="fileLogo" accept="image/*" style="display:none;">
+      </label>
+      <span id="logoState">現用：協和小學校徽</span>
+    </div>
+    <label class="chk"><input type="checkbox" id="chkLogo" checked> 中央顯示校徽／圖片</label>
+    <div class="note">💡 校徽會自動加白色襯底，確保 QR 可掃描。上傳圖片會即時取代預設校徽；重新整理即可還原。</div>
+  </div>
+
+  <!-- 右：預覽 -->
+  <div class="preview">
+    <h2 style="align-self:flex-start;">即時預覽</h2>
+    <div class="stage"><canvas id="qrCanvas" width="560" height="560"></canvas></div>
+    <div class="btns">
+      <button class="btn" id="btnPng">⬇ 下載 PNG</button>
+      <button class="btn ghost" id="btnSvg">⬇ 下載 SVG</button>
+    </div>
+    <p class="hint">PNG 適合印通告、貼文件（1200×1200）<br>SVG 係向量檔，放大縮細都唔會矇，適合印大 banner</p>
+  </div>
+</div>
+
+<footer>🔒 私隱保證：所有內容只喺你嘅瀏覽器度生成，唔會上傳、唔會儲存、冇追蹤 · 中華基督教會協和小學 內部工具 v1.0</footer>
+
+<script src="qrcode.js"></script>
+<script>
+// 中文內容要用 UTF-8 編碼
+qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+
+const canvas = document.getElementById('qrCanvas');
+const ctx = canvas.getContext('2d');
+
+let customLogo = null;          // 上傳嘅圖片
+let customLogoName = '上傳圖片';
+let logoDataUrl = '';           // logo 嘅 base64（SVG 匯出用）
+
+const DEFAULT_LOGO = 'logo-banner.png';
+const HW_RED = '#C8102E';
+
+// 將 <img> 轉做 base64 dataURL（SVG 匯出要內嵌先可以喺第啲機顯示）
+function imgToDataUrl(img, cb){
+  try{
+    const c = document.createElement('canvas');
+    const w = img.naturalWidth || 200, h = img.naturalHeight || 200;
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    logoDataUrl = c.toDataURL('image/png');
+  }catch(e){
+    logoDataUrl = img.src;   // 被 taint 就退而求其次
+  }
+  if (cb) cb();
+}
+
+const $ = id => document.getElementById(id);
+
+// ---------- 設定狀態 ----------
+const state = {
+  url: 'https://www.heepwoh.edu.hk',
+  style: 'square',
+  color: '#C8102E',
+  gradient: false,
+  transparent: false,
+  caption: true,
+  showLogo: true,
+};
+
+// ---------- 事件綁定 ----------
+$('txtUrl').addEventListener('input', e => { state.url = e.target.value; draw(); });
+
+$('segStyle').querySelectorAll('button').forEach(b => {
+  b.addEventListener('click', () => {
+    $('segStyle').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    state.style = b.dataset.v;
+    draw();
+  });
+});
+
+$('colorBox').querySelectorAll('.swatch').forEach(s => {
+  s.addEventListener('click', () => {
+    $('colorBox').querySelectorAll('.swatch').forEach(x => x.classList.remove('on'));
+    s.classList.add('on');
+    state.color = s.dataset.c;
+    $('customColor').value = s.dataset.c;
+    draw();
+  });
+});
+$('customColor').addEventListener('input', e => {
+  state.color = e.target.value;
+  $('colorBox').querySelectorAll('.swatch').forEach(x => x.classList.remove('on'));
+  draw();
+});
+
+$('chkGradient').addEventListener('change', e => { state.gradient = e.target.checked; draw(); });
+$('chkTransparent').addEventListener('change', e => { state.transparent = e.target.checked; draw(); });
+$('chkCaption').addEventListener('change', e => { state.caption = e.target.checked; draw(); });
+$('chkLogo').addEventListener('change', e => { state.showLogo = e.target.checked; draw(); });
+
+$('fileLogo').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const img = new Image();
+  img.onload = () => {
+    customLogo = img;
+    customLogoName = f.name;
+    imgToDataUrl(img);
+    $('logoState').textContent = '現用：' + f.name;
+    draw();
+  };
+  img.src = URL.createObjectURL(f);
+});
+
+// ---------- 顏色工具 ----------
+function hexToRgb(hex){
+  const h = hex.replace('#','');
+  return { r: parseInt(h.substr(0,2),16), g: parseInt(h.substr(2,2),16), b: parseInt(h.substr(4,2),16) };
+}
+function shade(hex, amt){          // amt: -1~1（正數變淺）
+  const c = hexToRgb(hex);
+  const t = amt > 0 ? 255 : 0;
+  const p = Math.abs(amt);
+  return `rgb(${Math.round(c.r + (t - c.r)*p)},${Math.round(c.g + (t - c.g)*p)},${Math.round(c.b + (t - c.b)*p)})`;
+}
+
+// ---------- 繪圖 ----------
+function roundedRect(c, x, y, w, h, r){
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function isFinder(r, c, n){
+  return (r < 8 && c < 8) || (r < 8 && c >= n - 8) || (r >= n - 8 && c < 8);
+}
+
+function drawQR(size, forExport){
+  const n = qr.getModuleCount();
+  const pad = Math.round(size * 0.055);   // 白邊（quiet zone）
+  const inner = size - pad * 2;
+  const cell = inner / n;
+  const bg = state.transparent ? 'rgba(0,0,0,0)' : '#ffffff';
+
+  // 背景
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, size, size);
+
+  // 漸變
+  let fillStyle;
+  if (state.gradient){
+    const g = ctx.createLinearGradient(0, pad, 0, size - pad);
+    g.addColorStop(0, state.color);
+    g.addColorStop(1, shade(state.color, 0.45));
+    fillStyle = g;
+  } else {
+    fillStyle = state.color;
+  }
+
+  const drawModule = (r, c) => {
+    const x = pad + c * cell, y = pad + r * cell;
+    if (state.style === 'dot'){
+      ctx.beginPath();
+      ctx.arc(x + cell/2, y + cell/2, cell * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (state.style === 'round'){
+      roundedRect(ctx, x + cell*0.06, y + cell*0.06, cell*0.88, cell*0.88, cell*0.30);
+      ctx.fill();
+    } else {
+      ctx.fillRect(x, y, cell + 0.5, cell + 0.5);
+    }
+  };
+
+  // 畫資料模組
+  ctx.fillStyle = fillStyle;
+  for (let r = 0; r < n; r++){
+    for (let c = 0; c < n; c++){
+      if (!qr.isDark(r, c)) continue;
+      if (isFinder(r, c, n)) continue;    // finder 另外畫
+      drawModule(r, c);
+    }
+  }
+
+  // 畫三個定位角（finder，保持實心方形確保可掃）
+  ctx.fillStyle = fillStyle;
+  const drawFinder = (fr, fc) => {
+    const x = pad + fc * cell, y = pad + fr * cell;
+    const s = cell * 7;
+    ctx.fillRect(x, y, s, s);                       // 外框
+    ctx.fillStyle = bg;                             // 內白
+    ctx.fillRect(x + cell, y + cell, s - cell*2, s - cell*2);
+    ctx.fillStyle = fillStyle;                      // 內實心
+    ctx.fillRect(x + cell*2, y + cell*2, s - cell*4, s - cell*4);
+  };
+  drawFinder(0, 0);
+  drawFinder(0, n - 7);
+  drawFinder(n - 7, 0);
+
+  // 校徽／Logo（置中，白色圓角襯底）
+  if (state.showLogo){
+    const logoSize = size * 0.24;
+    const lx = (size - logoSize) / 2, ly = (size - logoSize) / 2;
+    // 襯底
+    ctx.fillStyle = '#ffffff';
+    roundedRect(ctx, lx - logoSize*0.12, ly - logoSize*0.12, logoSize*1.24, logoSize*1.24, logoSize*0.10);
+    ctx.fill();
+    if (customLogo){
+      ctx.drawImage(customLogo, lx, ly, logoSize, logoSize);
+    } else {
+      const img = document.getElementById('centerLogo');
+      ctx.drawImage(img, lx, ly, logoSize, logoSize);
+    }
+  }
+}
+
+// ---------- QR 生成 ----------
+function makeQR(){
+  const url = state.url.trim();
+  const finalUrl = /^https?:\/\//i.test(url) ? url : 'https://' + url;
+  qr = qrcode(0, 'H');
+  qr.addData(finalUrl, 'Byte');
+  qr.make();
+  return finalUrl;
+}
+
+let qr = null;
+
+// ---------- 主繪圖 ----------
+function draw(){
+  try{
+    const finalUrl = makeQR();
+    canvas.width = 560; canvas.height = 560;
+    drawQR(560, false);
+
+    // 底部校名
+    if (state.caption){
+      ctx.font = 'bold 21px "Microsoft JhengHei",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = state.color;
+      ctx.fillText('中華基督教會協和小學', 280, 546);
+    }
+  }catch(err){
+    console.error(err);
+  }
+}
+
+// ---------- 匯出 ----------
+function exportPNG(){
+  const size = 1200;
+  const off = document.createElement('canvas');
+  off.width = size; off.height = state.caption ? size + 90 : size;
+  const octx = off.getContext('2d');
+  octx.fillStyle = state.transparent ? 'rgba(0,0,0,0)' : '#ffffff';
+  octx.fillRect(0, 0, off.width, off.height);
+  // 臨時切換 canvas 畫高解像
+  const tmp = document.createElement('canvas');
+  tmp.width = size; tmp.height = size;
+  const tctx = tmp.getContext('2d');
+  const origCtx = ctx;
+  // 用離屏畫
+  ctx.__proto__.constructor.call(tctx); // noop
+  // 直接重用繪圖函數：暫時將全域 ctx 指向離屏
+  const saved = Object.assign({}, state);
+  drawQRTo(tctx, size);
+  if (state.caption){
+    tctx.font = 'bold 46px "Microsoft JhengHei",sans-serif';
+    tctx.textAlign = 'center';
+    tctx.fillStyle = state.color;
+    tctx.fillText('中華基督教會協和小學', size/2, size + 40);
+  }
+  octx.drawImage(tmp, 0, 0);
+  const a = document.createElement('a');
+  a.download = '協小QR_' + Date.now() + '.png';
+  a.href = off.toDataURL('image/png');
+  a.click();
+}
+
+function drawQRTo(tctx, size){
+  // 用獨立 context 繪製（避免污染主 canvas）
+  const n = qr.getModuleCount();
+  const pad = Math.round(size * 0.055);
+  const inner = size - pad * 2;
+  const cell = inner / n;
+  const bg = state.transparent ? 'rgba(0,0,0,0)' : '#ffffff';
+  tctx.clearRect(0, 0, size, size);
+  tctx.fillStyle = bg;
+  tctx.fillRect(0, 0, size, size);
+  let fillStyle;
+  if (state.gradient){
+    const g = tctx.createLinearGradient(0, pad, 0, size - pad);
+    g.addColorStop(0, state.color);
+    g.addColorStop(1, shade(state.color, 0.45));
+    fillStyle = g;
+  } else fillStyle = state.color;
+
+  const dm = (r, c) => {
+    const x = pad + c * cell, y = pad + r * cell;
+    if (state.style === 'dot'){
+      tctx.beginPath();
+      tctx.arc(x + cell/2, y + cell/2, cell * 0.42, 0, Math.PI * 2);
+      tctx.fill();
+    } else if (state.style === 'round'){
+      roundedRect(tctx, x + cell*0.06, y + cell*0.06, cell*0.88, cell*0.88, cell*0.30);
+      tctx.fill();
+    } else {
+      tctx.fillRect(x, y, cell + 0.5, cell + 0.5);
+    }
+  };
+  tctx.fillStyle = fillStyle;
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++){
+      if (!qr.isDark(r, c) || isFinder(r, c, n)) continue;
+      dm(r, c);
+    }
+  const df = (fr, fc) => {
+    const x = pad + fc * cell, y = pad + fr * cell;
+    const s = cell * 7;
+    tctx.fillRect(x, y, s, s);
+    tctx.fillStyle = bg;
+    tctx.fillRect(x + cell, y + cell, s - cell*2, s - cell*2);
+    tctx.fillStyle = fillStyle;
+    tctx.fillRect(x + cell*2, y + cell*2, s - cell*4, s - cell*4);
+  };
+  df(0, 0); df(0, n - 7); df(n - 7, 0);
+
+  if (state.showLogo){
+    const logoSize = size * 0.24;
+    const lx = (size - logoSize) / 2, ly = (size - logoSize) / 2;
+    tctx.fillStyle = '#ffffff';
+    roundedRect(tctx, lx - logoSize*0.12, ly - logoSize*0.12, logoSize*1.24, logoSize*1.24, logoSize*0.10);
+    tctx.fill();
+    const img = customLogo || document.getElementById('centerLogo');
+    tctx.drawImage(img, lx, ly, logoSize, logoSize);
+  }
+}
+
+function exportSVG(){
+  const n = qr.getModuleCount();
+  const pad = 6;
+  const cell = 10;
+  const size = pad*2 + n*cell + (state.caption ? 70 : 0);
+  let parts = [];
+  const c = (x, y, w, h, r) => {
+    if (state.style === 'dot'){
+      parts.push(`<circle cx="${x + w/2}" cy="${y + h/2}" r="${w*0.42}"/>`);
+    } else if (state.style === 'round'){
+      parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w*0.30}"/>`);
+    } else {
+      parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}"/>`);
+    }
+  };
+  const finder = (fx, fy) => {
+    const x = pad + fx*cell, y = pad + fy*cell, s = cell*7;
+    parts.push(`<rect x="${x}" y="${y}" width="${s}" height="${s}"/>`);
+    parts.push(`<rect x="${x+cell}" y="${y+cell}" width="${s-cell*2}" height="${s-cell*2}" fill="#ffffff"/>`);
+    parts.push(`<rect x="${x+cell*2}" y="${y+cell*2}" width="${s-cell*4}" height="${s-cell*4}"/>`);
+  };
+  for (let r = 0; r < n; r++)
+    for (let c2 = 0; c2 < n; c2++){
+      if (!qr.isDark(r, c2) || isFinder(r, c2, n)) continue;
+      c(pad + c2*cell, pad + r*cell, cell, cell, cell*0.3);
+    }
+  finder(0, 0); finder(0, n-7); finder(n-7, 0);
+
+  const bg = state.transparent ? 'none' : '#ffffff';
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
+  svg += `<rect width="${size}" height="${size}" fill="${bg}"/>`;
+  svg += `<g fill="${state.color}">${parts.join('')}</g>`;
+  if (state.showLogo){
+    const ls = cell * n * 0.24;
+    const lx = (size - ls)/2, ly = (pad + n*cell - ls)/2;
+    svg += `<rect x="${lx - ls*0.12}" y="${ly - ls*0.12}" width="${ls*1.24}" height="${ls*1.24}" rx="${ls*0.1}" fill="#ffffff"/>`;
+    const img = customLogo || document.getElementById('centerLogo');
+    svg += `<image x="${lx}" y="${ly}" width="${ls}" height="${ls}" preserveAspectRatio="xMidYMid meet" href="${logoDataUrl || img.src}"/>`;
+  }
+  if (state.caption){
+    svg += `<text x="${size/2}" y="${size - 18}" font-family="Microsoft JhengHei,sans-serif" font-size="30" font-weight="bold" fill="${state.color}" text-anchor="middle">中華基督教會協和小學</text>`;
+  }
+  svg += '</svg>';
+  const a = document.createElement('a');
+  a.download = '協小QR_' + Date.now() + '.svg';
+  a.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  a.click();
+}
+
+$('btnPng').addEventListener('click', () => { makeQR(); exportPNG(); });
+$('btnSvg').addEventListener('click', () => { makeQR(); exportSVG(); });
+
+// 初始繪製
+window.addEventListener('load', () => {
+  imgToDataUrl(document.getElementById('centerLogo'), draw);
+});
+draw();
+</script>
+</body>
+</html>
